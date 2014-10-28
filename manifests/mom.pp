@@ -110,15 +110,27 @@ class puppet_master::mom (
     r10k_enabled    => $r10k_enabled,
     vip             => $vip,
   }
-
-  # doing this as auth_conf module is a pain in the arse
-  file { '/etc/puppetlabs/puppet/auth.conf':
-    ensure  => file,
-    owner   => 'root',
-    group   => 'root',
-    mode    => '0644',
-    source  => 'puppet:///modules/puppet_master/auth.conf',
-    notify  => Service['pe-httpd'],
-    require => Class['puppet_master::compile'],
+  #http://docs.puppetlabs.com/guides/scaling_multiple_masters.html#option-1-direct-agent-nodes-to-the-ca-master
+  # allows for non-authenticated node to retrieve the revocation list
+  # likely not needed when we go to jvm-master (3.4?)
+  puppet_auth { 'Allow modproxy to gain access to the crl':
+      ensure        => present,
+      path          => '/certificate_revocation_list',
+      authenticated => 'any',
+      allow         => '*',
+      methods       => ['find'],
+      target        => '/etc/puppetlabs/puppet/auth.conf',
   }
+
+  puppet_auth { 'Allow modproxy gain access to the crl ca':
+      ensure        => present,
+      path          => '/certificate_revocation_list/ca',
+      authenticated => 'any',
+      allow         => '*',
+      methods       => ['find'],
+      target        => '/etc/puppetlabs/puppet/auth.conf',
+  }
+
+
+
 }
